@@ -7,6 +7,10 @@ To start up the environment, please run the following command in the same direct
 
 This will spin up the gateway which will forward the HTTP requests from http://localhost/ to the internal Docker IP where the app containers run on.
 
+## Infrastructure
+
+![](URL_Lookup_Infrastructure.jpg)
+
 ## Scalability
 
 The gateway, web service and the database are running in a Docker environment to grant the ability to scale up or downsize the number of web services and read-only databases (slavedb) to meet the demand. Currently the docker-compose file is configured to deploy two app (web service) and two slavedb containers. The number of app and slavedb containers can be changed by changing the numeric value under deploy.replicas.
@@ -15,47 +19,55 @@ The gateway, web service and the database are running in a Docker environment to
 
 This application has two API endpoints, one to validate a specific URL and other to add a list of URLs to the database:
 
-```/urlinfo/1/<host_port>/<original_path_and_query>```
-> Validate if a URL is safe or not.
+### GET /urlinfo/1/<host_port>/<original_path_and_query>
 
-API Call Example:
-```GET http://localhost/urlinfo/1/facebook.com/example/path/to/image.png```
+Validates if a URL is safe or not to access. The API will access the PostgreSQL and check to see if the URL exists in the database. If it exists, it will respond that it is found and will return if it's safe or not based on the is_safe field in the database table. If the URL does not exist in there, it will return stating that it does not exist. Please see below for an example on how to make the API call and some examples of the output:
+
+API Call: `GET http://localhost/urlinfo/1/facebook.com/example/path/to/image.png`
 
 Successful JSON Output if unsafe URL is in database:
 
-```{
+```
+{
 	‘success’: True,
 	‘data’: {
 		‘found’: True,
 		‘is_safe’: False
 	}
-}```
+}
+```
 
 Successful JSON Output if URL doesn’t exist in database:
 
-```{
+```
+{
 	‘success’: True,
 	‘data’: {
 		‘found’: False
 	}
-}```
+}
+```
 
-/urladd/1
-	Add a list of unsafe URLs to the database.
+### POST /urladd/1
 
-API Call Example:
-	POST: http://localhost/urladd/1 with the following data:
-	{
-		‘data’: [
-			[‘facebook.com’, ‘example/path/to/image.png’],
-			[‘google.com’, ‘example/page’]
-		]
-	}
+Add a list of unsafe URLs to the database. Please see below for an example on how to make the API call and some examples of the output:
+
+API Call: `POST http://localhost/urladd/1` with the following data:
+```
+{
+	‘data’: [
+		[‘facebook.com’, ‘example/path/to/image.png’],
+		[‘google.com’, ‘example/page’]
+	]
+}
+```
 
 Successful JSON Output:
-```{
+```
+{
 	‘success’: True
-}```
+}
+```
 
 There are two scripts, read_test.py and write_test.py, that will perform the API test calls for your convenience.
 
