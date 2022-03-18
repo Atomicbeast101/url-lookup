@@ -1,0 +1,61 @@
+---
+version: '3'
+services:
+  masterdb:
+    image: docker.io/bitnami/postgresql:14
+    ports:
+      - '5432:5432'
+    volumes:
+      - ./db/database.sql:/docker-entrypoint-initdb.d/database.sql
+    environment:
+      - POSTGRESQL_REPLICATION_MODE=master
+      - POSTGRESQL_REPLICATION_USER=repmgr
+      - POSTGRESQL_REPLICATION_PASSWORD=rep@1234
+      - POSTGRESQL_USERNAME=postgres
+      - POSTGRESQL_PASSWORD=admin@1234
+      - POSTGRESQL_DATABASE=malware-urls
+  slavedb:
+    image: docker.io/bitnami/postgresql:14
+    # ports:
+    #   - '5432'
+    depends_on:
+      - masterdb
+    environment:
+      - POSTGRESQL_REPLICATION_MODE=slave
+      - POSTGRESQL_REPLICATION_USER=repmgr
+      - POSTGRESQL_REPLICATION_PASSWORD=rep@1234
+      - POSTGRESQL_MASTER_HOST=masterdb
+      - POSTGRESQL_USERNAME=postgres
+      - POSTGRESQL_PASSWORD=admin@1234
+      - POSTGRESQL_MASTER_PORT_NUMBER=5432
+    deploy:
+      mode: replicated
+      replicas: 2
+  app:
+    build: ./app
+    depends_on:
+      - masterdb
+      - slavedb
+    ports:
+    - 5000
+    environment:
+      - DB_WRITE_HOST=masterdb
+      - DB_WRITE_PORT=5432
+      - DB_READ_HOST=slavedb
+      - DB_READ_PORT=5432
+      - DB_NAME=malware-urls
+      - DB_USER=urlmgr
+      - DB_PASSWORD=url@1234
+    deploy:
+      mode: replicated
+      replicas: 2
+  gateway:
+    build: ./gateway
+    depends_on:
+      - app
+    ports:
+      - 80:80
+
+volumes:
+  db-data:
+    driver: local
